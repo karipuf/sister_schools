@@ -1,8 +1,12 @@
 import pandas as pd,pylab as pl,numpy as np,sys,pickle,io,lightgbm as lgb,pyspark,openai,base64,os,json
 from json_repair import repair_json
+from tqdm import tqdm
+from glob import glob
+from openai import OpenAI
 
 GEMINI_FLASH_MODEL='gemini-2.5-flash-preview-04-17'
 GEMINI_PRO_MODEL='gemini-2.5-pro-preview-03-25'
+GEMMA_3_MODEL='gemma-3-27b-it'
 
 def match_images(url1,url2,client,model='gemma3:12b',debug=False):
     
@@ -19,9 +23,10 @@ Please respond ONLY with the json object, no need for any extra explanation or c
      if debug: print(the_prompt)
      
      try:
-         res=client.chat.completions.create(model=model,messages=[{'role':'user','content':[{'type':'text','text':the_prompt},
-                                                    {'type':'image_url','image_url':{'url':f"data:image/jpeg;base64,{imdat1}"}},
-                                                    {'type':'image_url','image_url':{'url':f"data:image/jpeg;base64,{imdat2}"}}
+         res=client.chat.completions.create(model=model,
+                         messages=[{'role':'user','content':[{'type':'text','text':the_prompt},
+                         {'type':'image_url','image_url':{'url':f"data:image/jpeg;base64,{imdat1}"}},
+                         {'type':'image_url','image_url':{'url':f"data:image/jpeg;base64,{imdat2}"}}
                                                     ]}])
          
          return json.loads(repair_json(res.choices[0].message.content))
@@ -29,3 +34,20 @@ Please respond ONLY with the json object, no need for any extra explanation or c
      except:
 
          return {'image1':url1,'image2':url2,'matching':'error'}
+
+
+
+if __name__=='__main__':
+
+     uspics=glob("us/*_50.jpg")
+     ugpics=glob("uganda/*_50.jpg")
+
+     gclient=OpenAI(base_url=os.environ['GEMINIURL'],api_key=os.environ['GEMINIKEY'])
+
+     matches=[]
+     
+     for pics in tqdm([(uspic,ugpic) for uspic in uspics for ugpic in ugpics]):
+         matches.append(match_images(*pics,gclient,GEMINI_FLASH_MODEL))
+
+     sispf=pd.DataFrame(matches)
+                        
