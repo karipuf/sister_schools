@@ -9,6 +9,32 @@ GEMINI_FLASH_MODEL='gemini-2.5-flash-preview-04-17'
 GEMINI_PRO_MODEL='gemini-2.5-pro-preview-03-25'
 GEMMA_3_MODEL='gemma-3-27b-it'
 
+def csv2html(csv_paths,out_path="image_pairs.html"):
+
+     import pandas as pd
+
+     # Read the CSV file
+     df = pd.concat([pd.read_csv(csv_path).loc[lambda x:x.matching] for csv_path in csv_paths],axis=0)
+
+     # Generate HTML content
+     html_content = '<html><head><title>Image Pairs</title></head><body>'
+     html_content += '<table border="1" style="width:100%; text-align:center;">'
+     html_content += '<tr><th>Image 1</th><th>Image 2</th><th>Matching</th></tr>'
+
+     for _, row in df.iterrows():
+          html_content += '<tr>'
+          html_content += f'<td><img src="{row["image1"]}" alt="Image 1" style="max-width:300px; max-height:300px;"></td>'
+          html_content += f'<td><img src="{row["image2"]}" alt="Image 2" style="max-width:300px; max-height:300px;"></td>'
+          html_content += f'<td>{row["matching"]}</td>'
+          html_content += '</tr>'
+
+     html_content += '</table></body></html>'
+
+     # Write the HTML content to a file
+     with open(out_path, 'w') as f:
+          f.write(html_content)
+
+
 def subsample_all_images(imlist,scale_pct=15):
 
      for im in tqdm(imlist):
