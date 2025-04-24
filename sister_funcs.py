@@ -8,17 +8,28 @@ GEMINI_FLASH_MODEL='gemini-2.5-flash-preview-04-17'
 GEMINI_PRO_MODEL='gemini-2.5-pro-preview-03-25'
 GEMMA_3_MODEL='gemma-3-27b-it'
 
+def subsample_all_images(imlist,scale_pct=15):
+
+     for im in tqdm(imlist):
+          impath=os.path.splitext(im)
+          os.system(f'magick "{im}" -scale {scale_pct}% "{impath[0]}_{scale_pct}{impath[1]}"')
+
 def match_images(url1,url2,client,model='gemma3:12b',debug=False):
     
      imdat1=base64.b64encode(open(url1,"rb").read()).decode("utf-8")
      imdat2=base64.b64encode(open(url2,"rb").read()).decode("utf-8")
 
      the_prompt=f"""
-Please study these two images, and let me know if the two individuals shown here are holding the same object.
-Please respond in json format as follows: {{'image1':'{url1}','image2':'{url2}','matching':<true/false>}}
-Please only return 'matching' as True if the two objects are very clearly the same thing.
-  
-Please respond ONLY with the json object, no need for any extra explanation or comments.
+1. Please examine the two images provided.
+2. Determine if the objects being held by the individuals in each image are exactly the same (for example, the same brand, type, appearance and/or model of school product).
+3. Respond only with a JSON object in the following format:
+{{
+  "image1": "{url1}",
+  "image2": "{url2}",
+  "matching": <true/false>
+}}
+Only set "matching": true if the objects are clearly and unmistakably the same.
+Do not include any explanations or comments—return just the JSON object.  
 """
      if debug: print(the_prompt)
      
