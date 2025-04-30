@@ -1,4 +1,4 @@
-import pandas as pd,pylab as pl,numpy as np,sys,pickle,io,lightgbm as lgb,pyspark,openai,base64,os,json
+import pandas as pd,pylab as pl,numpy as np,sys,pickle,io,lightgbm as lgb,pyspark,openai,base64,os,json,re
 from google import genai
 from json_repair import repair_json
 from tqdm import tqdm
@@ -114,7 +114,20 @@ Do not include any explanations or comments—return just the JSON object.
 
          return {'image1':url1,'image2':url2,'matching':'error'}
 
+def rename_and_copy_files(filepf,new_dir,filename_prefix='image',remove_regex=''):
 
+     counter=iter(range(filepf.shape[0]+1))
+     reg=re.compile(remove_regex)
+     
+     def rename_file(x,y):
+          i=next(counter)
+          return f"cp {reg.sub('',x)} {new_dir}/{filename_prefix}_{i}a{os.path.splitext(x)[1].lower()} ; "+\
+               f"cp {reg.sub('',y)} {new_dir}/{filename_prefix}_{i}b{os.path.splitext(y)[1].lower()}"
+         
+     filepf=filepf.copy()               
+     filepf['cmd']=[rename_file(*tmp) for tmp in zip(filepf.image1,filepf.image2)]
+
+     return filepf
 
 if __name__=='__main__':
 
