@@ -7,15 +7,18 @@ from openai import OpenAI
 
 GEMINI_FLASH_MODEL='gemini-2.5-flash-preview-04-17'
 GEMINI_PRO_MODEL='gemini-2.5-pro-preview-03-25'
-GEMMA_3_MODEL='gemma-3-27b-it'
+QWEN_VL_MODEL='ZimaBlueAI/Qwen2-VL-7B-Instruct:latest'
 
-def csv2html(csv_paths,out_path="image_pairs.html"):
+def csv2html(csv_paths,out_path="image_pairs.html",shuffle=True):
 
      import pandas as pd
 
-     # Read the CSV file
-     df = pd.concat([pd.read_csv(csv_path).loc[lambda x:x.matching] for csv_path in csv_paths],axis=0)
+     # Read the CSV files
+     # If csv_path is a dataframe then just use that
+     df = csv_paths if type(csv_paths)==pd.DataFrame else pd.concat([pd.read_csv(csv_path).loc[lambda x:x.matching==True] for csv_path in csv_paths],axis=0)
 
+     if shuffle: df=df.sample(frac=1)
+     
      # Generate HTML content
      html_content = '<html><head><title>Image Pairs</title></head><body>'
      html_content += '<table border="1" style="width:100%; text-align:center;">'
@@ -23,8 +26,8 @@ def csv2html(csv_paths,out_path="image_pairs.html"):
 
      for _, row in df.iterrows():
           html_content += '<tr>'
-          html_content += f'<td><img src="{row["image1"]}" alt="Image 1" style="max-width:300px; max-height:300px;"></td>'
-          html_content += f'<td><img src="{row["image2"]}" alt="Image 2" style="max-width:300px; max-height:300px;"></td>'
+          html_content += f'<td><img src="{row["image1"]}" alt="Image 1" style="max-width:500px; max-height:500px;"></td>'
+          html_content += f'<td><img src="{row["image2"]}" alt="Image 2" style="max-width:500px; max-height:500px;"></td>'
           html_content += f'<td>{row["matching"]}</td>'
           html_content += '</tr>'
 
@@ -41,7 +44,7 @@ def subsample_all_images(imlist,scale_pct=15):
           impath=os.path.splitext(im)
           os.system(f'magick "{im}" -scale {scale_pct}% "{impath[0]}_{scale_pct}{impath[1]}"')
 
-def match_images(url1,url2,client,model='gemma3:12b',debug=False,use_gemini=True):
+def match_images(url1,url2,client,model='gemma3:12b',debug=False,use_gemini=True,really_tough=False):
 
 
      if use_gemini:
@@ -65,6 +68,20 @@ def match_images(url1,url2,client,model='gemma3:12b',debug=False,use_gemini=True
 Only set "matching": true if the objects are clearly and unmistakably exactly the same.
 Do not include any explanations or comments—return just the JSON object.  
 """
+     if really_tough:
+          the_prompt=f"""
+1. Please examine the two images provided.
+2. Determine if the objects being held by the individuals in each image are exactly the same - it has to be EXACTLY the same, i.e. same brand, model, design, appearance, color etc.
+3. Respond only with a JSON object in the following format:
+{{
+  "image1": "{url1}",
+  "image2": "{url2}",
+  "matching": <true/false>
+}}
+Only set "matching": true if the objects are clearly and unmistakably exactly the same.
+Do not include any explanations or comments—return just the JSON object.  
+"""
+     
      if debug: print(the_prompt)
      
      try:
@@ -124,3 +141,9 @@ if __name__=='__main__':
 
           sispf=pd.DataFrame(matches)
           sispf.to_csv(f"sispf_{chunk}.csv",index=False)
+
+     # Code to refine using pplx api
+
+     # matches=[]
+     # for _,row in tqdm(foo.iterrows()):
+     #      matches.append(match_images(row.image1,row.image2,pclient,model='sonar',use_gemini=False))
